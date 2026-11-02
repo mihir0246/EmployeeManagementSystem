@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Management System | Dashboard</title>
+    <title>Employee Management System | Pro Dashboard</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,13 +12,15 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Custom CSS -->
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <!-- Custom Modern CSS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
     <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
         <div class="container-fluid px-lg-4">
             <a class="navbar-brand" href="index.html">
                 <div class="brand-icon"><i class="bi bi-people-fill"></i></div>
@@ -40,17 +42,23 @@
                     </li>
                 </ul>
 
-                <!-- Role Selector (Section 15) -->
+                <!-- Right Controls: Theme Toggle & Role Selector -->
                 <div class="d-flex align-items-center gap-3">
+                    <!-- Dark/Light Mode Switcher -->
+                    <button class="btn-theme-toggle" id="themeToggleBtn" type="button" title="Toggle Dark/Light Mode">
+                        <i class="bi bi-moon-stars" id="themeIcon"></i>
+                    </button>
+
+                    <!-- Role Selector -->
                     <div class="d-flex align-items-center gap-2">
-                        <span class="text-light small text-secondary">Logged in as:</span>
+                        <span class="text-light small text-secondary d-none d-sm-inline">Role:</span>
                         <div class="role-badge">
                             <i class="bi bi-shield-check text-warning"></i>
                             <span id="currentRoleDisplay">ADMIN</span>
                         </div>
                     </div>
                     <select id="roleSelect" class="form-select form-select-sm bg-dark text-light border-secondary" style="width: auto;">
-                        <option value="ADMIN">Role: ADMIN (Full Access)</option>
+                        <option value="ADMIN">Role: ADMIN (Full Control)</option>
                         <option value="HR">Role: HR (View / Add / Edit)</option>
                     </select>
                 </div>
@@ -58,21 +66,27 @@
         </div>
     </nav>
 
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
     <!-- Main Container -->
     <div class="container-fluid px-lg-4 py-4">
 
         <!-- Header & Action -->
         <div class="d-md-flex align-items-center justify-content-between mb-4">
             <div>
-                <h2 class="fw-bold text-dark mb-1">Employee Management Dashboard</h2>
-                <p class="text-muted mb-0">Overview of organization personnel, departments, and records.</p>
+                <h2 class="fw-bold mb-1">Employee Intelligence Dashboard</h2>
+                <p class="text-muted mb-0">Real-time personnel metrics, department distributions, and payroll analytics.</p>
             </div>
             <div class="mt-3 mt-md-0 d-flex gap-2">
-                <button class="btn btn-outline-secondary" onclick="exportToCSV()">
+                <button class="btn btn-sm btn-outline-primary d-inline-flex align-items-center admin-hr-only" onclick="openImportModal()">
+                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Bulk Import CSV
+                </button>
+                <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center" onclick="exportToCSV()">
                     <i class="bi bi-download me-1"></i> Export CSV
                 </button>
-                <a href="add-employee.html" class="btn btn-primary-custom admin-hr-only">
-                    <i class="bi bi-person-plus-fill me-1"></i> Add New Employee
+                <a href="add-employee.html" class="btn btn-sm btn-primary-custom admin-hr-only">
+                    <i class="bi bi-person-plus-fill me-1"></i> Add Employee
                 </a>
             </div>
         </div>
@@ -80,11 +94,12 @@
         <!-- Metric / Stats Cards -->
         <div class="row g-3 mb-4">
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="stat-card">
+                <div class="stat-card stat-primary">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <div class="stat-title">Total Employees</div>
+                            <div class="stat-title">Total Workforce</div>
                             <div class="stat-value" id="statTotal">--</div>
+                            <div class="stat-subtext"><i class="bi bi-arrow-up-right text-primary me-1"></i>All registered staff</div>
                         </div>
                         <div class="stat-icon-wrapper stat-icon-primary">
                             <i class="bi bi-people"></i>
@@ -93,11 +108,12 @@
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="stat-card">
+                <div class="stat-card stat-success">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <div class="stat-title">Active Employees</div>
+                            <div class="stat-title">Active Personnel</div>
                             <div class="stat-value text-success" id="statActive">--</div>
+                            <div class="stat-subtext" id="statActiveRatio"><i class="bi bi-check-circle text-success me-1"></i>100% active</div>
                         </div>
                         <div class="stat-icon-wrapper stat-icon-success">
                             <i class="bi bi-person-check"></i>
@@ -106,11 +122,12 @@
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="stat-card">
+                <div class="stat-card stat-warning">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <div class="stat-title">Inactive / On Leave</div>
-                            <div class="stat-value text-muted" id="statInactive">--</div>
+                            <div class="stat-value text-warning" id="statInactive">--</div>
+                            <div class="stat-subtext"><i class="bi bi-clock-history text-warning me-1"></i>Pending / on break</div>
                         </div>
                         <div class="stat-icon-wrapper stat-icon-warning">
                             <i class="bi bi-person-dash"></i>
@@ -119,15 +136,42 @@
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="stat-card">
+                <div class="stat-card stat-info">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <div class="stat-title">Departments</div>
-                            <div class="stat-value text-info" id="statDept">6</div>
+                            <div class="stat-title">Monthly Payroll</div>
+                            <div class="stat-value text-info" id="statPayroll">--</div>
+                            <div class="stat-subtext" id="statAvgSalary">Avg: ₹0 / employee</div>
                         </div>
                         <div class="stat-icon-wrapper stat-icon-info">
-                            <i class="bi bi-buildings"></i>
+                            <i class="bi bi-cash-stack"></i>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Visual Analytics Row (Chart.js) -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-lg-5">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h6 class="chart-title"><i class="bi bi-pie-chart text-primary"></i> Headcount by Department</h6>
+                        <span class="badge bg-primary-subtle text-primary small">Live</span>
+                    </div>
+                    <div style="position: relative; height: 260px; width: 100%;">
+                        <canvas id="deptPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-7">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h6 class="chart-title"><i class="bi bi-bar-chart-fill text-info"></i> Department Payroll Expenditure (₹)</h6>
+                        <span class="badge bg-info-subtle text-info small">Monthly</span>
+                    </div>
+                    <div style="position: relative; height: 260px; width: 100%;">
+                        <canvas id="payrollBarChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -140,8 +184,8 @@
                     <!-- Search Input -->
                     <div class="col-12 col-md-5">
                         <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
-                            <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Search by name, email, designation...">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="searchInput" class="form-control" placeholder="Search by name, email, designation...">
                             <button id="searchBtn" class="btn btn-outline-primary" type="button">Search</button>
                         </div>
                     </div>
@@ -176,7 +220,7 @@
 
                     <!-- Reset Button -->
                     <div class="col-12 col-md-2 text-md-end">
-                        <button id="resetFiltersBtn" class="btn btn-sm btn-light border text-secondary w-100 w-md-auto">
+                        <button id="resetFiltersBtn" class="btn btn-sm btn-outline-secondary w-100 w-md-auto">
                             <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                         </button>
                     </div>
@@ -185,14 +229,14 @@
 
             <!-- Table Card Body -->
             <div class="card-body p-0">
-                <div class="d-flex justify-content-between align-items-center px-4 py-2 border-bottom bg-light">
+                <div class="d-flex justify-content-between align-items-center px-4 py-2 border-bottom">
                     <span id="tableCountDisplay" class="small text-muted fw-semibold">Loading records...</span>
                     <div id="tableSpinner" class="spinner-border spinner-border-sm text-primary" role="status" style="display: none;">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table custom-table table-hover align-middle mb-0">
+                    <table class="table custom-table align-middle mb-0">
                         <thead>
                             <tr>
                                 <th style="width: 70px;">ID</th>
@@ -201,7 +245,7 @@
                                 <th>Designation / Salary</th>
                                 <th>Status</th>
                                 <th>Joining Date</th>
-                                <th style="width: 120px;" class="text-center">Actions</th>
+                                <th style="width: 150px;" class="text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="employeeTableBody">
@@ -217,17 +261,17 @@
     <!-- View Employee Details Modal -->
     <div class="modal fade" id="viewEmployeeModal" tabindex="-1" aria-labelledby="viewModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold" id="viewModalLabel"><i class="bi bi-person-badge me-2"></i> Employee Profile</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content border-0">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold" id="viewModalLabel"><i class="bi bi-person-badge text-primary me-2"></i> Employee Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
                     <div class="text-center mb-4">
                         <div class="stat-icon-wrapper stat-icon-primary mx-auto mb-2" style="width: 64px; height: 64px; font-size: 2rem;">
                             <i class="bi bi-person"></i>
                         </div>
-                        <h4 class="fw-bold mb-0 text-dark" id="viewModalName">--</h4>
+                        <h4 class="fw-bold mb-0" id="viewModalName">--</h4>
                         <div class="text-muted" id="viewModalDesignation">--</div>
                         <div class="mt-2" id="viewModalStatus"></div>
                     </div>
@@ -246,8 +290,12 @@
                             <span class="fw-semibold small" id="viewModalDept">--</span>
                         </div>
                         <div class="list-group-item d-flex justify-content-between py-2">
-                            <span class="text-muted small">Monthly Salary</span>
+                            <span class="text-muted small">Monthly Compensation</span>
                             <span class="fw-semibold small text-success" id="viewModalSalary">--</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between py-2">
+                            <span class="text-muted small">Joining Date</span>
+                            <span class="fw-semibold small" id="viewModalJoinDate">--</span>
                         </div>
                         <div class="list-group-item d-flex justify-content-between py-2">
                             <span class="text-muted small">Date of Birth</span>
@@ -258,54 +306,99 @@
                             <span class="fw-semibold small" id="viewModalGender">--</span>
                         </div>
                         <div class="list-group-item d-flex justify-content-between py-2">
-                            <span class="text-muted small">Joining Date</span>
-                            <span class="fw-semibold small" id="viewModalJoiningDate">--</span>
-                        </div>
-                        <div class="list-group-item py-2">
-                            <span class="text-muted small d-block mb-1">Address</span>
-                            <span class="fw-semibold small text-secondary" id="viewModalAddress">--</span>
+                            <span class="text-muted small">Residential Address</span>
+                            <span class="fw-semibold small text-end" style="max-width: 260px;" id="viewModalAddress">--</span>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <div class="modal-footer border-top d-flex justify-content-between">
+                    <button type="button" id="viewModalSlipBtn" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Download Salary Slip
+                    </button>
+                    <div>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        <a id="viewModalEditBtn" href="#" class="btn btn-primary btn-sm admin-hr-only">
+                            <i class="bi bi-pencil-square me-1"></i> Edit Profile
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-body text-center p-4">
-                    <div class="text-danger mb-3">
-                        <i class="bi bi-exclamation-triangle-fill" style="font-size: 3rem;"></i>
-                    </div>
-                    <h5 class="fw-bold mb-2">Delete Employee?</h5>
-                    <p class="text-muted small mb-4">
-                        Are you sure you want to delete <strong id="deleteEmployeeName">this employee</strong>? This action will permanently remove the record from the MySQL database.
+    <!-- Bulk CSV Import Modal -->
+    <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold" id="importModalLabel"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i> Bulk Import Employees</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">
+                        Upload a CSV spreadsheet with employee details. Required columns: 
+                        <code>firstName, lastName, email, department, salary, joiningDate</code>.
                     </p>
-                    <div class="d-flex gap-2 justify-content-center">
-                        <button type="button" class="btn btn-light btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" id="confirmDeleteBtn" class="btn btn-danger btn-sm px-3">Yes, Delete</button>
+                    <div class="mb-3">
+                        <label for="csvFileInput" class="form-label">Select CSV File</label>
+                        <input class="form-control" type="file" id="csvFileInput" accept=".csv">
                     </div>
+                    <div id="importPreview" class="border rounded p-2 bg-body-tertiary small" style="max-height: 160px; overflow-y: auto; display: none;"></div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="startImportBtn" class="btn btn-sm btn-primary-custom" disabled>
+                        <i class="bi bi-upload me-1"></i> Start Batch Import
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="text-danger mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-trash3"></i>
+                    </div>
+                    <h5>Are you sure?</h5>
+                    <p class="text-muted small mb-0">
+                        Do you really want to permanently delete <strong id="deleteEmployeeName"></strong> from the database? This action cannot be undone.
+                    </p>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmDeleteBtn" class="btn btn-sm btn-danger">
+                        <i class="bi bi-trash-fill me-1"></i> Delete Employee
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Footer -->
-    <footer class="text-center">
-        <div class="container">
-            <p class="mb-0">Employee Database Management System &bull; Java Full Stack Development (FSD) Project</p>
-            <p class="mb-0 small text-muted">Spring Boot Monolith &bull; Spring Data JPA &bull; MySQL &bull; Bootstrap 5</p>
+    <footer>
+        <div class="container-fluid px-lg-4 d-md-flex align-items-center justify-content-between text-center text-md-start">
+            <div>
+                <strong>EMS Pro</strong> – Enterprise Employee Database Management System
+            </div>
+            <div class="mt-2 mt-md-0">
+                <span class="badge bg-secondary-subtle text-secondary me-2">Spring Boot 3.3.4</span>
+                <span class="badge bg-secondary-subtle text-secondary me-2">OpenPDF 2.0.3</span>
+                <span class="badge bg-secondary-subtle text-secondary">Bootstrap 5 + Chart.js</span>
+            </div>
         </div>
     </footer>
 
-    <!-- Bootstrap 5 JS Bundle -->
+    <!-- Bootstrap 5 Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- App Logic JS -->
+    <!-- App Logic -->
     <script src="js/app.js"></script>
 </body>
 </html>

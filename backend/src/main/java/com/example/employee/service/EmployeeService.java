@@ -24,4 +24,6 @@ public interface EmployeeService {
     List<EmployeeResponseDto> filterEmployeesByStatus(String status);
 
     List<EmployeeResponseDto> filterEmployees(String department, String status);
+
+    byte[] generateSalarySlip(Long id, Integer month, Integer year);
 }

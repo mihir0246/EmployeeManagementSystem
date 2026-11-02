@@ -7,10 +7,12 @@ import com.example.employee.exception.DuplicateEmailException;
 import com.example.employee.exception.EmployeeNotFoundException;
 import com.example.employee.repository.EmployeeRepository;
 import com.example.employee.service.EmployeeService;
+import com.example.employee.service.SalarySlipPdfService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,10 +21,12 @@ import java.util.stream.Collectors;
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+    private final SalarySlipPdfService salarySlipPdfService;
 
     @Autowired
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository) {
+    public EmployeeServiceImpl(EmployeeRepository employeeRepository, SalarySlipPdfService salarySlipPdfService) {
         this.employeeRepository = employeeRepository;
+        this.salarySlipPdfService = salarySlipPdfService;
     }
 
     @Override
@@ -60,7 +64,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new EmployeeNotFoundException(id));
 
-        // Business Rule: Ensure updated email doesn't conflict with another employee
+        // Business Rule: Ensure email uniqueness across other employees
         if (employeeRepository.existsByEmailAndIdNot(dto.getEmail(), id)) {
             throw new DuplicateEmailException("Another employee with email '" + dto.getEmail() + "' already exists.");
         }
@@ -131,6 +135,19 @@ public class EmployeeServiceImpl implements EmployeeService {
         return result.stream()
                 .map(EmployeeResponseDto::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generateSalarySlip(Long id, Integer month, Integer year) {
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new EmployeeNotFoundException(id));
+
+        LocalDate now = LocalDate.now();
+        int targetMonth = (month != null && month >= 1 && month <= 12) ? month : now.getMonthValue();
+        int targetYear = (year != null && year >= 2000 && year <= 2100) ? year : now.getYear();
+
+        return salarySlipPdfService.generateSalarySlip(employee, targetMonth, targetYear);
     }
 
     private void mapDtoToEntity(EmployeeRequestDto dto, Employee employee) {
